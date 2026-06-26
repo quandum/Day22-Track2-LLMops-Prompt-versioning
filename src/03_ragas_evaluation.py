@@ -26,6 +26,17 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import config  # ⚠️ phải import trước LangChain
 
+# ── Workaround: RAGAS 0.4.x cần langchain_community.chat_models.vertexai ──
+# Module này đã bị xóa trong langchain-community 0.4+, thay bằng langchain-google-vertexai
+import sys as _sys
+try:
+    from langchain_google_vertexai import ChatVertexAI as _ChatVertexAI
+    _vertexai_mod = type(_sys)("langchain_community.chat_models.vertexai")
+    _vertexai_mod.ChatVertexAI = _ChatVertexAI
+    _sys.modules["langchain_community.chat_models.vertexai"] = _vertexai_mod
+except ImportError:
+    pass
+
 import numpy as np
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser

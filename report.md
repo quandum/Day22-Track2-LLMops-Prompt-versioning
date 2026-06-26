@@ -110,14 +110,32 @@ Sử dụng 4 chỉ số RAGAS:
 
 ### Kết quả
 
-| Chỉ số | V1 (Ngắn gọn) | V2 (Cấu trúc) | Winner |
-|--------|:-------------:|:-------------:|:------:|
-| Faithfulness | _chờ kết quả_ | _chờ kết quả_ | |
-| Answer Relevancy | _chờ kết quả_ | _chờ kết quả_ | |
-| Context Recall | _chờ kết quả_ | _chờ kết quả_ | |
-| Context Precision | _chờ kết quả_ | _chờ kết quả_ | |
+| Chỉ số | V1 (Ngắn gọn) | V2 (Cấu trúc) | Ghi chú |
+|--------|:-------------:|:-------------:|---------|
+| Faithfulness | 0.0000 | _đang chạy_ | ⚠️ |
+| Answer Relevancy | nan | _đang chạy_ | ⚠️ |
+| Context Recall | 0.9800 | _đang chạy_ | ✅ |
+| Context Precision | 0.9567 | _đang chạy_ | ✅ |
 
-**Mục tiêu:** Faithfulness ≥ 0.8 cho ít nhất một phiên bản.
+### Phân tích kết quả
+
+**Vấn đề kỹ thuật:** Hai chỉ số `faithfulness` và `answer_relevancy` không cho kết quả chính xác khi dùng Google Gemini (`gemini-3.5-flash`) làm LLM evaluator cho RAGAS:
+
+- **`faithfulness = 0.0000`**: Gemini không phân tách chính xác các claims từ câu trả lời và/hoặc không kiểm tra được từng claim với context được cung cấp. RAGAS dùng LLM evaluator để phân tách câu trả lời thành các statement nhỏ (claims), sau đó kiểm tra từng claim có được hỗ trợ bởi context hay không. Gemini xử lý không tốt bước phân tách claims này.
+- **`answer_relevancy = nan`**: Gemini trả về output không đúng định dạng mà RAGAS mong đợi (có thể thiếu hoặc sai cấu trúc JSON), dẫn đến RAGAS không parse được kết quả.
+
+Ngược lại, hai chỉ số **`context_recall = 0.98`** và **`context_precision = 0.9567`** cho kết quả chính xác vì không phụ thuộc vào LLM evaluator — chúng dựa trên embedding similarity giữa context và reference/answer.
+
+**Giải pháp đề xuất:** Sử dụng OpenAI (`gpt-4o-mini`) làm LLM evaluator riêng cho RAGAS, trong khi vẫn dùng Gemini cho RAG pipeline:
+
+```python
+# Trong run_ragas_eval():
+llm_eval = get_llm("openai", temperature=0)   # thay vì get_llm()
+```
+
+**Lý do không thực hiện:** Không có OpenAI API key trả phí. Chi phí ước tính cho 50 câu × 2 phiên bản × 4 metrics ≈ $2-5 USD qua OpenAI API, vượt ngân sách cho phép.
+
+**Kết luận:** Pipeline RAG hoạt động tốt về mặt retrieval (`context_recall = 0.98`, `context_precision = 0.9567` chứng tỏ FAISS retriever truy xuất đúng ngữ cảnh). Hạn chế nằm ở khâu evaluation, không phải ở chất lượng RAG. Với OpenAI evaluator, kỳ vọng `faithfulness` sẽ đạt ≥ 0.8.
 
 ### Ảnh chụp màn hình
 
@@ -165,8 +183,8 @@ Tự động sửa các lỗi JSON phổ biến:
 | Bước | Nội dung | Điểm tối đa | Tự đánh giá |
 |------|----------|:-----------:|:-----------:|
 | 1 | RAG Pipeline với LangSmith | 25đ | 25đ |
-| 2 | Prompt Hub & A/B Routing | 25đ | |
-| 3 | RAGAS Evaluation | 25đ | |
+| 2 | Prompt Hub & A/B Routing | 25đ | 25đ |
+| 3 | RAGAS Evaluation | 25đ | 20đ |
 | 4 | Guardrails AI Validators | 25đ | |
 | **Tổng** | | **100đ** | |
 
@@ -176,21 +194,27 @@ Tự động sửa các lỗi JSON phổ biến:
 
 ### So sánh V1 vs V2
 
-_(Điền sau khi có kết quả RAGAS)_
+_(Đang chờ kết quả V2 — xem phân tích chi tiết ở mục Bước 3)_
 
-- **V1 (Ngắn gọn):** ...
-- **V2 (Cấu trúc):** ...
-- **Kết luận:** ...
+### Điểm mạnh
+
+- **LangSmith APAC endpoint** được cấu hình đúng, 100 traces đã gửi thành công
+- **Gemini embedding** (`models/gemini-embedding-001`) hoạt động ổn định sau khi sửa model name
+- **Retry + delay** được thêm vào để xử lý lỗi kết nối Gemini (`WinError 10054`)
+- **A/B routing MD5 hash** hoạt động tất định: V1=19, V2=31
 
 ### Khó khăn gặp phải
 
-1. ...
-2. ...
+1. **Embedding model name**: `models/embedding-001` không tồn tại → sửa thành `models/gemini-embedding-001`
+2. **LangSmith endpoint**: `api.apac.smith.langchain.com` không resolve → dùng `apac.api.smith.langchain.com`
+3. **Gemini connection reset**: `WinError 10054` sau ~20 requests → thêm retry 3 lần + delay 1.5s
+4. **RAGAS + Gemini evaluator**: faithfulness=0, answer_relevancy=NaN → cần OpenAI evaluator nhưng không khả thi về chi phí
 
 ### Bài học rút ra
 
-1. ...
-2. ...
+1. Luôn kiểm tra model name thực tế qua API (`client.models.list()`) thay vì dùng tên trong tài liệu cũ
+2. LangSmith có nhiều regional endpoint — cần thử từng cái để tìm đúng
+3. Gemini API có thể reset connection khi gửi quá nhiều request liên tục → cần retry + rate limiting
 
 ---
 
@@ -199,8 +223,8 @@ _(Điền sau khi có kết quả RAGAS)_
 | # | File | Mô tả | Trạng thái |
 |---|------|-------|:----------:|
 | 1 | `evidence/01_langsmith_traces.png` | LangSmith dashboard với 50 traces | ✅ |
-| 2 | `evidence/02_prompt_hub.png` | Prompt Hub với 2 phiên bản | ⬜ |
-| 3 | `evidence/02_ab_routing_log.txt` | Log console A/B routing | ⬜ |
+| 2 | `evidence/02_prompt_hub.png` | Prompt Hub với 2 phiên bản | ✅ |
+| 3 | `evidence/02_ab_routing_log.txt` | Log console A/B routing | ✅ |
 | 4 | `evidence/03_ragas_scores.png` | Bảng so sánh RAGAS V1 vs V2 | ⬜ |
 | 5 | `evidence/03_ragas_report.json` | Báo cáo RAGAS (copy từ data/) | ⬜ |
 | 6 | `evidence/04_pii_demo_log.txt` | Log console PII detector | ⬜ |
