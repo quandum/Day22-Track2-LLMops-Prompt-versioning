@@ -57,9 +57,9 @@ Xây dựng pipeline RAG hoàn chỉnh: load knowledge base → chunk → embed 
 
 ### Kết quả
 
-- [ ] Đã tạo vectorstore thành công
-- [ ] Đã chạy 50 câu hỏi qua RAG chain
-- [ ] Đã xác nhận ≥50 traces trên LangSmith dashboard
+- [x] Đã tạo vectorstore thành công (FAISS, 107 chunks, Gemini embedding)
+- [x] Đã chạy 50 câu hỏi qua RAG chain (`gemini-3.5-flash`)
+- [x] Đã xác nhận 50 traces trên LangSmith APAC dashboard
 
 ### Ảnh chụp màn hình
 
@@ -164,7 +164,7 @@ Tự động sửa các lỗi JSON phổ biến:
 
 | Bước | Nội dung | Điểm tối đa | Tự đánh giá |
 |------|----------|:-----------:|:-----------:|
-| 1 | RAG Pipeline với LangSmith | 25đ | |
+| 1 | RAG Pipeline với LangSmith | 25đ | 25đ |
 | 2 | Prompt Hub & A/B Routing | 25đ | |
 | 3 | RAGAS Evaluation | 25đ | |
 | 4 | Guardrails AI Validators | 25đ | |
@@ -198,7 +198,7 @@ _(Điền sau khi có kết quả RAGAS)_
 
 | # | File | Mô tả | Trạng thái |
 |---|------|-------|:----------:|
-| 1 | `evidence/01_langsmith_traces.png` | LangSmith dashboard với ≥50 traces | ⬜ |
+| 1 | `evidence/01_langsmith_traces.png` | LangSmith dashboard với 50 traces | ✅ |
 | 2 | `evidence/02_prompt_hub.png` | Prompt Hub với 2 phiên bản | ⬜ |
 | 3 | `evidence/02_ab_routing_log.txt` | Log console A/B routing | ⬜ |
 | 4 | `evidence/03_ragas_scores.png` | Bảng so sánh RAGAS V1 vs V2 | ⬜ |
