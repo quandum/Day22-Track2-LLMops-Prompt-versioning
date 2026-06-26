@@ -132,7 +132,7 @@ Dùng **cùng 1 Gemini API key**, 2 model khác nhau:
 | Cấu hình `.env` | Model | Dùng cho |
 |-----------------|-------|----------|
 | `GEMINI_MODEL` | `models/gemini-2.5-flash-lite` | RAG pipeline (rẻ nhất) |
-| `GEMINI_EVAL_MODEL` | `models/gemini-2.0-flash` | RAGAS evaluator (cần phân tích claims) |
+| `GEMINI_EVAL_MODEL` | `models/gemini-2.5-flash` | RAGAS evaluator (cần phân tích claims) |
 | `GEMINI_EMBEDDING_MODEL` | `models/gemini-embedding-001` | Embeddings |
 
 ### Checklist triển khai

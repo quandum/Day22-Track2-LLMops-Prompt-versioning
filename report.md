@@ -13,7 +13,7 @@
 | **Ngày thực hiện** | 26/06/2026 |
 | **LLM Provider sử dụng** | Google Gemini — API trả phí |
 | **Model Bước 1 & 2** | `gemini-3.5-flash` |
-| **Model Bước 3** | RAG pipeline: `gemini-2.5-flash-lite`, Evaluator: `gemini-2.0-flash` |
+| **Model Bước 3** | RAG pipeline: `gemini-2.5-flash-lite`, Evaluator: `gemini-2.5-flash` |
 
 ---
 
@@ -109,12 +109,12 @@ Cùng một `request_id` luôn được định tuyến đến cùng một phiê
 | Giai đoạn | Model | Vai trò | Lý do |
 |-----------|-------|---------|-------|
 | RAG Pipeline | `gemini-2.5-flash-lite` | Sinh 50 câu trả lời × 2 versions | Rẻ nhất, đủ chất lượng cho RAG |
-| RAGAS Evaluator | `gemini-2.0-flash` | Đánh giá faithfulness, answer_relevancy | Mạnh hơn, cần cho việc phân tích claims |
+| RAGAS Evaluator | `gemini-2.5-flash` | Đánh giá faithfulness, answer_relevancy | Mạnh hơn, cần cho việc phân tích claims |
 
 Cấu hình trong `.env`:
 ```
 GEMINI_MODEL=models/gemini-2.5-flash-lite       # cho RAG pipeline
-GEMINI_EVAL_MODEL=models/gemini-2.0-flash        # cho RAGAS evaluator
+GEMINI_EVAL_MODEL=models/gemini-2.5-flash        # cho RAGAS evaluator
 GEMINI_EMBEDDING_MODEL=models/gemini-embedding-001
 ```
 
