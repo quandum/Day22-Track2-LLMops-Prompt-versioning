@@ -11,7 +11,9 @@
 | **Họ và tên** | Trần Mạnh Chánh Quân |
 | **Mã số học viên (MSSV)** | 2A202600786 |
 | **Ngày thực hiện** | 26/06/2026 |
-| **LLM Provider sử dụng** | Google Gemini (`gemini-3.5-flash`) — API trả phí |
+| **LLM Provider sử dụng** | Google Gemini — API trả phí |
+| **Model Bước 1 & 2** | `gemini-3.5-flash` |
+| **Model Bước 3** | RAG pipeline: `gemini-2.5-flash-lite`, Evaluator: `gemini-2.0-flash` |
 
 ---
 
@@ -100,42 +102,47 @@ Cùng một `request_id` luôn được định tuyến đến cùng một phiê
 
 ## 4. Bước 3: RAGAS Evaluation
 
+### Chiến lược Multi-Model
+
+Để tối ưu chi phí trên cùng một Google Gemini API key, sử dụng **2 model khác nhau**:
+
+| Giai đoạn | Model | Vai trò | Lý do |
+|-----------|-------|---------|-------|
+| RAG Pipeline | `gemini-2.5-flash-lite` | Sinh 50 câu trả lời × 2 versions | Rẻ nhất, đủ chất lượng cho RAG |
+| RAGAS Evaluator | `gemini-2.0-flash` | Đánh giá faithfulness, answer_relevancy | Mạnh hơn, cần cho việc phân tích claims |
+
+Cấu hình trong `.env`:
+```
+GEMINI_MODEL=models/gemini-2.5-flash-lite       # cho RAG pipeline
+GEMINI_EVAL_MODEL=models/gemini-2.0-flash        # cho RAGAS evaluator
+GEMINI_EMBEDDING_MODEL=models/gemini-embedding-001
+```
+
 ### Phương pháp đánh giá
 
 Sử dụng 4 chỉ số RAGAS:
-1. **Faithfulness** — Độ trung thực của câu trả lời so với context
-2. **Answer Relevancy** — Mức độ liên quan của câu trả lời với câu hỏi
-3. **Context Recall** — Khả năng truy xuất thông tin liên quan từ context
-4. **Context Precision** — Tỉ lệ context truy xuất được thực sự hữu ích
+1. **Faithfulness** — Độ trung thực của câu trả lời so với context (cần LLM evaluator)
+2. **Answer Relevancy** — Mức độ liên quan của câu trả lời với câu hỏi (cần LLM evaluator)
+3. **Context Recall** — Khả năng truy xuất thông tin liên quan từ context (dùng embeddings)
+4. **Context Precision** — Tỉ lệ context truy xuất được thực sự hữu ích (dùng embeddings)
 
 ### Kết quả
 
 | Chỉ số | V1 (Ngắn gọn) | V2 (Cấu trúc) | Ghi chú |
 |--------|:-------------:|:-------------:|---------|
-| Faithfulness | 0.0000 | _đang chạy_ | ⚠️ |
-| Answer Relevancy | nan | _đang chạy_ | ⚠️ |
-| Context Recall | 0.9800 | _đang chạy_ | ✅ |
-| Context Precision | 0.9567 | _đang chạy_ | ✅ |
+| Faithfulness | _đang chạy_ | _đang chạy_ | |
+| Answer Relevancy | _đang chạy_ | _đang chạy_ | |
+| Context Recall | _đang chạy_ | _đang chạy_ | |
+| Context Precision | _đang chạy_ | _đang chạy_ | |
 
-### Phân tích kết quả
+**Mục tiêu:** Faithfulness ≥ 0.8 cho ít nhất một phiên bản.
 
-**Vấn đề kỹ thuật:** Hai chỉ số `faithfulness` và `answer_relevancy` không cho kết quả chính xác khi dùng Google Gemini (`gemini-3.5-flash`) làm LLM evaluator cho RAGAS:
+### Ghi chú kỹ thuật
 
-- **`faithfulness = 0.0000`**: Gemini không phân tách chính xác các claims từ câu trả lời và/hoặc không kiểm tra được từng claim với context được cung cấp. RAGAS dùng LLM evaluator để phân tách câu trả lời thành các statement nhỏ (claims), sau đó kiểm tra từng claim có được hỗ trợ bởi context hay không. Gemini xử lý không tốt bước phân tách claims này.
-- **`answer_relevancy = nan`**: Gemini trả về output không đúng định dạng mà RAGAS mong đợi (có thể thiếu hoặc sai cấu trúc JSON), dẫn đến RAGAS không parse được kết quả.
-
-Ngược lại, hai chỉ số **`context_recall = 0.98`** và **`context_precision = 0.9567`** cho kết quả chính xác vì không phụ thuộc vào LLM evaluator — chúng dựa trên embedding similarity giữa context và reference/answer.
-
-**Giải pháp đề xuất:** Sử dụng OpenAI (`gpt-4o-mini`) làm LLM evaluator riêng cho RAGAS, trong khi vẫn dùng Gemini cho RAG pipeline:
-
-```python
-# Trong run_ragas_eval():
-llm_eval = get_llm("openai", temperature=0)   # thay vì get_llm()
-```
-
-**Lý do không thực hiện:** Không có OpenAI API key trả phí. Chi phí ước tính cho 50 câu × 2 phiên bản × 4 metrics ≈ $2-5 USD qua OpenAI API, vượt ngân sách cho phép.
-
-**Kết luận:** Pipeline RAG hoạt động tốt về mặt retrieval (`context_recall = 0.98`, `context_precision = 0.9567` chứng tỏ FAISS retriever truy xuất đúng ngữ cảnh). Hạn chế nằm ở khâu evaluation, không phải ở chất lượng RAG. Với OpenAI evaluator, kỳ vọng `faithfulness` sẽ đạt ≥ 0.8.
+- **Code có retry 3 lần** + sleep 10s trong `run_ragas_eval()` để xử lý TimeoutError
+- **Gemini timeout tăng lên 120s** trong `llm_factory.py` để tránh timeout khi RAGAS gọi nhiều LLM request
+- **Temperature = 0.01** cho evaluator LLM (Gemini không chấp nhận temperature=0)
+- `contexts` luôn là `list[str]` (không ghép chuỗi) — đúng chuẩn RAGAS
 
 ### Ảnh chụp màn hình
 

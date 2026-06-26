@@ -51,6 +51,7 @@ def get_llm(provider: str = None, temperature: float = 0.0):
             model=config.GEMINI_MODEL,
             google_api_key=config.GOOGLE_API_KEY,
             temperature=temperature,
+            request_timeout=120,
         )
 
     elif provider == "anthropic":

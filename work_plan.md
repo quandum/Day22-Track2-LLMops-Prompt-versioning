@@ -122,10 +122,18 @@ cd src && python 02_prompt_hub_ab_routing.py | tee ../evidence/02_ab_routing_log
 
 ## BƯỚC 3: RAGAS Evaluation (25 điểm)
 
-**File cần sửa:** `src/03_ragas_evaluation.py`  
-**Mục tiêu:** Chạy 50 QA pairs qua cả 2 phiên bản prompt, đánh giá bằng 4 chỉ số RAGAS, đạt faithfulness ≥ 0.8
+**File cần sửa:** `src/03_ragas_evaluation.py`, `src/config.py`, `src/utils/llm_factory.py`  
+**Mục tiêu:** Chạy 50 QA pairs qua cả 2 phiên bản prompt, đánh giá bằng 4 chỉ số RAGAS
 
-**Lưu ý:** API Gemini đã trả phí nên tốc độ nhanh, dự kiến ~10–15 phút cho mỗi phiên bản.
+### Chiến lược Multi-Model (tiết kiệm chi phí)
+
+Dùng **cùng 1 Gemini API key**, 2 model khác nhau:
+
+| Cấu hình `.env` | Model | Dùng cho |
+|-----------------|-------|----------|
+| `GEMINI_MODEL` | `models/gemini-2.5-flash-lite` | RAG pipeline (rẻ nhất) |
+| `GEMINI_EVAL_MODEL` | `models/gemini-2.0-flash` | RAGAS evaluator (cần phân tích claims) |
+| `GEMINI_EMBEDDING_MODEL` | `models/gemini-embedding-001` | Embeddings |
 
 ### Checklist triển khai
 
@@ -135,7 +143,7 @@ cd src && python 02_prompt_hub_ab_routing.py | tee ../evidence/02_ab_routing_log
 | 3.2 | `run_rag()` | `docs = retriever.invoke(question)` → `contexts = [doc.page_content for doc in docs]` (list[str]!) → `ctx_str = "\n\n".join(contexts)` → `(prompt \| llm \| StrOutputParser()).invoke({"context": ctx_str, "question": question})` → trả về `{"answer": ..., "contexts": contexts}` |
 | 3.3 | `collect_rag_outputs()` | Lặp qua 50 QA_PAIRS → gọi `run_rag()` → append vào list {question, reference, answer, contexts} |
 | 3.4 | `build_ragas_dataset()` | Tạo `SingleTurnSample(user_input=..., response=..., retrieved_contexts=..., reference=...)` → wrap trong `EvaluationDataset(samples=...)` |
-| 3.5 | `run_ragas_eval()` | `evaluate(dataset, metrics=[faithfulness, answer_relevancy, context_recall, context_precision], llm=llm_eval, embeddings=emb_eval)` → `np.mean(result[metric])` cho từng metric |
+| 3.5 | `run_ragas_eval()` | `evaluate(dataset, metrics=[...], llm=llm_eval, embeddings=emb_eval)` với `llm_eval.model = config.GEMINI_EVAL_MODEL` + retry 3 lần + temperature=0.01 |
 | 3.6 | `main()` | Tạo vectorstore → `collect_rag_outputs("v1")` + `collect_rag_outputs("v2")` → `run_ragas_eval(v1)` + `run_ragas_eval(v2)` → in bảng so sánh → lưu `data/ragas_report.json` |
 
 ### Chạy
@@ -143,6 +151,18 @@ cd src && python 02_prompt_hub_ab_routing.py | tee ../evidence/02_ab_routing_log
 ```bash
 cd src && python 03_ragas_evaluation.py
 ```
+
+⏱️ Dự kiến 10-15 phút/version. Code có retry 3 lần + Gemini timeout 120s.
+
+### Các lưu ý kỹ thuật
+
+- `contexts` phải là `list[str]`, không phải string đã ghép
+- `evaluate()` nhận `llm=` và `embeddings=`, không truyền vào metric constructor
+- `result[metric_name]` trả về list → dùng `np.mean()` để tính trung bình
+- Gemini không chấp nhận `temperature=0` → dùng `temperature=0.01`
+- Nếu gặp `429 RESOURCE_EXHAUSTED` → tăng spending cap tại [ai.studio/spend](https://ai.studio/spend)
+- Nếu gặp `400 INVALID_ARGUMENT` → kiểm tra temperature > 0
+- Nếu gặp `TimeoutError` → code tự retry sau 10s, tối đa 3 lần
 
 ### Bằng chứng cần thu thập
 

@@ -171,15 +171,27 @@ def run_ragas_eval(rag_results: list, version: str) -> dict:
 
     dataset = build_ragas_dataset(rag_results)
 
-    llm_eval = get_llm(temperature=0)
+    llm_eval = get_llm(temperature=0.01)
+    # Override model cho RAGAS evaluator (dùng model mạnh hơn)
+    if hasattr(llm_eval, 'model') and config.GEMINI_EVAL_MODEL:
+        llm_eval.model = config.GEMINI_EVAL_MODEL
     emb_eval = get_embeddings()
 
-    result = evaluate(
-        dataset,
-        metrics=[faithfulness, answer_relevancy, context_recall, context_precision],
-        llm=llm_eval,
-        embeddings=emb_eval,
-    )
+    for attempt in range(3):
+        try:
+            result = evaluate(
+                dataset,
+                metrics=[faithfulness, answer_relevancy, context_recall, context_precision],
+                llm=llm_eval,
+                embeddings=emb_eval,
+            )
+            break
+        except Exception as e:
+            if attempt < 2:
+                print(f"  ⚠️ Timeout/Error, thử lại ({attempt+2}/3): {e}")
+                time.sleep(10)
+            else:
+                raise
 
     # Tính mean score cho mỗi metric
     # result["faithfulness"] trả về list of floats → dùng np.mean()
