@@ -1,0 +1,23 @@
+=======================================================
+  Demo: JSON Formatting & Repair
+=======================================================
+
+[Valid JSON] ✅ Pass
+  Input:  {"name": "Alice", "age": 30}
+  Output: {"name": "Alice", "age": 30}
+
+[Markdown fences] ✅ Pass
+  Input:  ```json\n{"name": "Bob"}\n```
+  Output: {\n  "name": "Bob"\n}
+
+[Single quotes] ✅ Pass
+  Input:  {'name': 'Charlie', 'score': 95}
+  Output: {\n  "name": "Charlie",\n  "score": 95\n}
+
+[Trailing comma] ✅ Pass
+  Input:  {"key": "value",}
+  Output: {\n  "key": "value"\n}
+
+[Truly invalid] ❌ Fail
+  Input:  This is not JSON at all: ??? {]
+  Output: None
