@@ -87,10 +87,10 @@ Cùng một `request_id` luôn được định tuyến đến cùng một phiê
 
 ### Kết quả
 
-- [ ] Đã push 2 prompt lên LangSmith Prompt Hub
-- [ ] Đã pull prompt từ Hub khi chạy
-- [ ] Đã chạy A/B routing trên 50 câu hỏi
-- [ ] Console log hiển thị nhãn phiên bản (v1/v2)
+- [x] Đã push 2 prompt lên LangSmith Prompt Hub (APAC)
+- [x] Đã pull prompt từ Hub khi chạy
+- [x] A/B routing MD5 hash tất định: V1=19 câu, V2=31 câu
+- [x] Console log hiển thị nhãn phiên bản (v1/v2) cho từng câu
 
 ### Ảnh chụp màn hình
 

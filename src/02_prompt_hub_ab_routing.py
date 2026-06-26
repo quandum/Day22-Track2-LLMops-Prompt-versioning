@@ -74,13 +74,21 @@ def push_prompts_to_hub(client: Client):
         url = client.push_prompt(PROMPT_V1_NAME, object=PROMPT_V1, description="V1 – Phong cách ngắn gọn, thân thiện")
         print(f"✅ Đã push V1 → {url}")
     except Exception as e:
-        print(f"⚠️  V1 lỗi: {e}")
+        err_msg = str(e)
+        if "409" in err_msg or "Nothing to commit" in err_msg:
+            print(f"ℹ️  V1 đã tồn tại trên Hub (không thay đổi)")
+        else:
+            print(f"⚠️  V1 lỗi: {e}")
 
     try:
         url = client.push_prompt(PROMPT_V2_NAME, object=PROMPT_V2, description="V2 – Phong cách chuyên nghiệp, có cấu trúc")
         print(f"✅ Đã push V2 → {url}")
     except Exception as e:
-        print(f"⚠️  V2 lỗi: {e}")
+        err_msg = str(e)
+        if "409" in err_msg or "Nothing to commit" in err_msg:
+            print(f"ℹ️  V2 đã tồn tại trên Hub (không thay đổi)")
+        else:
+            print(f"⚠️  V2 lỗi: {e}")
 
 
 # ── 4. Pull Prompts từ Prompt Hub ──────────────────────────────────────────
